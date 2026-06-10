@@ -23,16 +23,16 @@ export interface MTDRow {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function fetchSheet(sheet: string): Promise<any[]> {
+async function fetchSheet(sheet: string): Promise<{ cols: any[]; rows: any[] }> {
   const url = `https://docs.google.com/spreadsheets/d/1bRMnBP6B4c7mctDdya9EDxYVVonebgf5vjQvLLGO3Kc/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheet)}`
   try {
     const res = await fetch(url, { next: { revalidate: 300 } })
     const text = await res.text()
     const jsonStr = text.replace(/^[^{]*/, '').replace(/\);?\s*$/, '')
     const data = JSON.parse(jsonStr)
-    return data?.table?.rows ?? []
+    return { cols: data?.table?.cols ?? [], rows: data?.table?.rows ?? [] }
   } catch {
-    return []
+    return { cols: [], rows: [] }
   }
 }
 
@@ -57,7 +57,7 @@ function parseGvizDate(v: any): string {
 }
 
 export async function getDashboardData(): Promise<DashboardRow[]> {
-  const rows = await fetchSheet('Dashboard')
+  const { rows } = await fetchSheet('Dashboard')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return rows
     .filter((r: any) => r?.c?.[0]?.v)
@@ -76,7 +76,7 @@ export async function getDashboardData(): Promise<DashboardRow[]> {
 }
 
 export async function getMTDData(): Promise<MTDRow[]> {
-  const rows = await fetchSheet('MTD')
+  const { rows } = await fetchSheet('MTD')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return rows
     .filter((r: any) => r?.c?.[0]?.v)
@@ -92,4 +92,36 @@ export async function getMTDData(): Promise<MTDRow[]> {
       clients: num(r.c[7]?.v),
       newClients: num(r.c[8]?.v),
     }))
+}
+
+// ── Analytics sheet ─────────────────────────────────────────────────────────
+// Rows = metrics, Columns = months. cols[0] = label col, cols[1..] = month headers.
+
+export interface AnalyticsSheet {
+  months: string[]                        // month header labels
+  byLabel: Record<string, number[]>       // metric label → array of values per month
+}
+
+export async function getAnalyticsSheet(): Promise<AnalyticsSheet> {
+  const { cols, rows } = await fetchSheet('Analytics')
+  // cols[0] is the label column header; cols[1..] are month names
+  const months = cols.slice(1).map((c: any) => String(c?.label ?? '')).filter(Boolean)
+
+  const byLabel: Record<string, number[]> = {}
+  for (const row of rows) {
+    const cells = (row as any).c ?? []
+    const label = String(cells[0]?.v ?? '').trim()
+    if (!label) continue
+    const values = cells.slice(1).map((c: any) => num(c?.v))
+    byLabel[label] = values
+  }
+
+  return { months, byLabel }
+}
+
+export function analyticsRow(sheet: AnalyticsSheet, fragment: string): number[] {
+  const key = Object.keys(sheet.byLabel).find(k =>
+    k.toLowerCase().includes(fragment.toLowerCase())
+  )
+  return key ? sheet.byLabel[key] : new Array(sheet.months.length).fill(0)
 }

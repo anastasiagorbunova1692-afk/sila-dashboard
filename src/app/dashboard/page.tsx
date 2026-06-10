@@ -35,9 +35,8 @@ export default async function DashboardPage() {
     { totalRevenue: 0, raceRevenue: 0, certRevenue: 0, eventRevenue: 0, races: 0, clients: 0, newClients: 0 }
   )
 
-  // Get current month name from MTD data
-  const currentMTD = mtdData[mtdData.length - 1]
-  const currentMTDMonth = currentMTD?.month ?? ''
+  // The last row in MTD sheet is always the current month
+  const currentMTDMonth = mtdData.length > 0 ? mtdData[mtdData.length - 1].month : ''
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">

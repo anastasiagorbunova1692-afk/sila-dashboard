@@ -95,28 +95,58 @@ export async function getMTDData(): Promise<MTDRow[]> {
 }
 
 // ── Analytics sheet ─────────────────────────────────────────────────────────
-// Rows = metrics, Columns = months. cols[0] = label col, cols[1..] = month headers.
+// Fetched as CSV (published Google Sheet — no CORS issues on server).
+// Row 0 = month headers; each subsequent row: col 0 = metric label, col 1..= values.
 
 export interface AnalyticsSheet {
-  months: string[]                        // month header labels
-  byLabel: Record<string, number[]>       // metric label → array of values per month
+  months: string[]
+  byLabel: Record<string, number[]>
+}
+
+function parseCSV(text: string): string[][] {
+  const result: string[][] = []
+  for (const line of text.split('\n')) {
+    const row: string[] = []
+    let cur = '', inQ = false
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]
+      if (ch === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++ } else inQ = !inQ }
+      else if (ch === ',' && !inQ) { row.push(cur); cur = '' }
+      else cur += ch
+    }
+    row.push(cur.replace(/\r$/, ''))
+    if (row.some(c => c)) result.push(row)
+  }
+  return result
+}
+
+function numCSV(s: string): number {
+  const n = parseFloat(s.trim().replace(/\s/g, '').replace(',', '.'))
+  return isNaN(n) ? 0 : n
 }
 
 export async function getAnalyticsSheet(): Promise<AnalyticsSheet> {
-  const { cols, rows } = await fetchSheet('Analytics')
-  // cols[0] is the label column header; cols[1..] are month names
-  const months = cols.slice(1).map((c: any) => String(c?.label ?? '')).filter(Boolean)
+  const url = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSTopIEBlEjf8o0O7SdzEPGXFwGP83qXqjxERV-P851rJIppmCnGLHfUpzMtxSkKtG2FoNRxYhLzGOJ/pub?output=csv&gid=1413980308'
+  try {
+    const res = await fetch(url, { next: { revalidate: 300 } })
+    if (!res.ok) return { months: [], byLabel: {} }
+    const matrix = parseCSV(await res.text())
+    if (matrix.length < 2) return { months: [], byLabel: {} }
 
-  const byLabel: Record<string, number[]> = {}
-  for (const row of rows) {
-    const cells = (row as any).c ?? []
-    const label = String(cells[0]?.v ?? '').trim()
-    if (!label) continue
-    const values = cells.slice(1).map((c: any) => num(c?.v))
-    byLabel[label] = values
+    // First row: cell[0] is empty/label header, cells[1..] are month names
+    const months = matrix[0].slice(1).map(s => s.trim()).filter(Boolean)
+    const byLabel: Record<string, number[]> = {}
+
+    for (const row of matrix.slice(1)) {
+      const label = row[0]?.trim()
+      if (!label) continue
+      byLabel[label] = row.slice(1, 1 + months.length).map(numCSV)
+    }
+
+    return { months, byLabel }
+  } catch {
+    return { months: [], byLabel: {} }
   }
-
-  return { months, byLabel }
 }
 
 export function analyticsRow(sheet: AnalyticsSheet, fragment: string): number[] {

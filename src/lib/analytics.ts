@@ -9,38 +9,58 @@ export interface AnalyticsRow {
   values: number[]
 }
 
-function num(v: unknown): number {
-  if (v === null || v === undefined) return 0
-  const n = Number(v)
+function num(raw: string): number {
+  const s = raw.trim().replace(/\s/g, '').replace(',', '.')
+  const n = parseFloat(s)
   return isNaN(n) ? 0 : n
+}
+
+// Minimal CSV parser — handles quoted fields with commas inside
+function parseCSV(text: string): string[][] {
+  const rows: string[][] = []
+  for (const line of text.split('\n')) {
+    const trimmed = line.trimEnd()
+    if (!trimmed) continue
+    const cells: string[] = []
+    let cur = ''
+    let inQuote = false
+    for (let i = 0; i < trimmed.length; i++) {
+      const ch = trimmed[i]
+      if (ch === '"') {
+        if (inQuote && trimmed[i + 1] === '"') { cur += '"'; i++ }
+        else inQuote = !inQuote
+      } else if (ch === ',' && !inQuote) {
+        cells.push(cur); cur = ''
+      } else {
+        cur += ch
+      }
+    }
+    cells.push(cur)
+    rows.push(cells)
+  }
+  return rows
 }
 
 export async function getAnalyticsData(): Promise<AnalyticsData> {
   const url =
-    'https://docs.google.com/spreadsheets/d/1k_7QA2zi2o-YZ3EjNO8bm28uM2BPIBi8-8iM1X3IK2g/gviz/tq?tqx=out:json&sheet=%D0%9E%D1%86%D0%B8%D1%84%D1%80%D0%BE%D0%B2%D0%BA%D0%B0&pub=1'
+    'https://docs.google.com/spreadsheets/d/1k_7QA2zi2o-YZ3EjNO8bm28uM2BPIBi8-8iM1X3IK2g/export?format=csv&sheet=%D0%9E%D1%86%D0%B8%D1%84%D1%80%D0%BE%D0%B2%D0%BA%D0%B0'
   try {
     const res = await fetch(url, { next: { revalidate: 300 } })
+    if (!res.ok) return { months: [], rows: [], byLabel: {} }
     const text = await res.text()
-    const jsonStr = text
-      .replace(/^[^{]*/, '')
-      .replace(/\);\s*$/, '')
-    const data = JSON.parse(jsonStr)
-    const table = data?.table
-    if (!table) return { months: [], rows: [], byLabel: {} }
+    const matrix = parseCSV(text)
+    if (matrix.length < 2) return { months: [], rows: [], byLabel: {} }
 
-    // cols[0] = label column, cols[1..] = month headers
-    const cols: { label?: string }[] = table.cols ?? []
-    const months: string[] = cols.slice(1).map((c) => c.label ?? '')
+    // First row: col 0 = empty header, cols 1.. = month names
+    const months = matrix[0].slice(1).map(m => m.trim()).filter(Boolean)
 
-    const rawRows: { c: { v: unknown }[] }[] = table.rows ?? []
     const rows: AnalyticsRow[] = []
     const byLabel: Record<string, number[]> = {}
 
-    for (const row of rawRows) {
-      const cells = row.c ?? []
-      const label = String(cells[0]?.v ?? '').trim()
+    for (const cells of matrix.slice(1)) {
+      const label = cells[0]?.trim()
       if (!label) continue
-      const values = cells.slice(1).map((c) => num(c?.v))
+      const values = cells.slice(1, 1 + months.length).map(num)
       rows.push({ label, values })
       byLabel[label] = values
     }

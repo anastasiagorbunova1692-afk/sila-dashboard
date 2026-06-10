@@ -1,17 +1,21 @@
 import { MTDRow } from '@/lib/sheets'
 import { formatRubles, formatDelta } from '@/lib/utils'
 
+const MONTHS_GENITIVE = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+
 interface Props {
   data: MTDRow[]
   currentMonth: string
   currentDay: number
+  currentMonthIndex: number
 }
 
-export function MTDTable({ data, currentMonth, currentDay }: Props) {
+export function MTDTable({ data, currentMonth, currentDay, currentMonthIndex }: Props) {
+  const dateLabel = `${currentDay} ${MONTHS_GENITIVE[currentMonthIndex] ?? ''}`
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
       <div className="px-5 py-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-        <h3 className="font-semibold text-white">Сравнение по месяцам (до {currentDay}-го числа)</h3>
+        <h3 className="font-semibold text-white">MTD отчёт на {dateLabel}</h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

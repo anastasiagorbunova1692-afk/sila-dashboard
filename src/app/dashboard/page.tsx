@@ -97,7 +97,7 @@ export default async function DashboardPage() {
           <section className="space-y-4">
             <h2 className="text-lg font-semibold text-white">Сравнение по месяцам</h2>
             <MTDBarChart data={mtdData} currentMonth={currentMTDMonth} />
-            <MTDTable data={mtdData} currentMonth={currentMTDMonth} currentDay={currentDay} />
+            <MTDTable data={mtdData} currentMonth={currentMTDMonth} currentDay={currentDay} currentMonthIndex={now.getMonth()} />
           </section>
         )}
       </main>

@@ -1,6 +1,5 @@
 import { LogoutButton } from '@/components/LogoutButton'
 import { AutoRefresh } from '@/components/AutoRefresh'
-import { DashboardTabs } from '@/components/DashboardTabs'
 
 const MONTHS_RU = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -17,7 +16,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <AutoRefresh intervalMs={300_000} />
 
-      {/* Header */}
       <header
         className="sticky top-0 z-10 px-4 md:px-8 py-4"
         style={{
@@ -47,8 +45,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <LogoutButton />
         </div>
       </header>
-
-      <DashboardTabs />
 
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-6">
         {children}

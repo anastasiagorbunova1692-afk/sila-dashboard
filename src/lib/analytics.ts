@@ -42,8 +42,9 @@ function parseCSV(text: string): string[][] {
 }
 
 export async function getAnalyticsData(): Promise<AnalyticsData> {
-  const url =
-    'https://docs.google.com/spreadsheets/d/e/2PACX-1vSZDsLoL7jDuhMqXuwlyleAL_ueRRT7XdUV9BSpgG3ubxlBW1g4IMiWROBAn9rNMu9iwzrWftlh7Ypv/pub?output=csv&gid=1815316927'
+  // Fetch via own API route to avoid CORS / redirect issues with Google Sheets
+  const base = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+  const url = `${base}/api/analytics-data`
   try {
     const res = await fetch(url, { next: { revalidate: 300 } })
     if (!res.ok) return { months: [], rows: [], byLabel: {} }

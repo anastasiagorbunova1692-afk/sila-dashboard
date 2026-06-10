@@ -3,7 +3,6 @@ import { formatRubles } from '@/lib/utils'
 import { StatCard } from '@/components/StatCard'
 import { RevenueChart } from '@/components/RevenueChart'
 import { MTDTable } from '@/components/MTDTable'
-import { MTDBarChart } from '@/components/MTDBarChart'
 import { LogoutButton } from '@/components/LogoutButton'
 import { AutoRefresh } from '@/components/AutoRefresh'
 
@@ -94,8 +93,6 @@ export default async function DashboardPage() {
         {/* BLOCK 2 — MTD comparison */}
         {mtdData.length > 0 && (
           <section className="space-y-4">
-            <h2 className="text-lg font-semibold text-white">Сравнение по месяцам</h2>
-            <MTDBarChart data={mtdData} currentMonth={currentMTDMonth} />
             <MTDTable data={mtdData} currentMonth={currentMTDMonth} currentDay={currentDay} currentMonthIndex={now.getMonth()} />
           </section>
         )}

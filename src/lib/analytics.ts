@@ -9,59 +9,36 @@ export interface AnalyticsRow {
   values: number[]
 }
 
-function num(raw: string): number {
-  const s = raw.trim().replace(/\s/g, '').replace(',', '.')
-  const n = parseFloat(s)
+function num(v: unknown): number {
+  if (v === null || v === undefined) return 0
+  const n = Number(v)
   return isNaN(n) ? 0 : n
 }
 
-// Minimal CSV parser — handles quoted fields with commas inside
-function parseCSV(text: string): string[][] {
-  const rows: string[][] = []
-  for (const line of text.split('\n')) {
-    const trimmed = line.trimEnd()
-    if (!trimmed) continue
-    const cells: string[] = []
-    let cur = ''
-    let inQuote = false
-    for (let i = 0; i < trimmed.length; i++) {
-      const ch = trimmed[i]
-      if (ch === '"') {
-        if (inQuote && trimmed[i + 1] === '"') { cur += '"'; i++ }
-        else inQuote = !inQuote
-      } else if (ch === ',' && !inQuote) {
-        cells.push(cur); cur = ''
-      } else {
-        cur += ch
-      }
-    }
-    cells.push(cur)
-    rows.push(cells)
-  }
-  return rows
-}
-
 export async function getAnalyticsData(): Promise<AnalyticsData> {
-  // Fetch via own API route to avoid CORS / redirect issues with Google Sheets
-  const base = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
-  const url = `${base}/api/analytics-data`
+  const url =
+    'https://docs.google.com/spreadsheets/d/1bRMnBP6B4c7mctDdya9EDxYVVonebgf5vjQvLLGO3Kc/gviz/tq?tqx=out:json&sheet=Analytics'
   try {
     const res = await fetch(url, { next: { revalidate: 300 } })
-    if (!res.ok) return { months: [], rows: [], byLabel: {} }
     const text = await res.text()
-    const matrix = parseCSV(text)
-    if (matrix.length < 2) return { months: [], rows: [], byLabel: {} }
+    const jsonStr = text.replace(/^[^{]*/, '').replace(/\);?\s*$/, '')
+    const data = JSON.parse(jsonStr)
+    const table = data?.table
+    if (!table) return { months: [], rows: [], byLabel: {} }
 
-    // First row: col 0 = empty header, cols 1.. = month names
-    const months = matrix[0].slice(1).map(m => m.trim()).filter(Boolean)
+    // cols[0] = metric label, cols[1..] = month headers
+    const cols: { label?: string }[] = table.cols ?? []
+    const months = cols.slice(1).map((c) => c.label ?? '').filter(Boolean)
 
+    const rawRows: { c: { v: unknown }[] }[] = table.rows ?? []
     const rows: AnalyticsRow[] = []
     const byLabel: Record<string, number[]> = {}
 
-    for (const cells of matrix.slice(1)) {
-      const label = cells[0]?.trim()
+    for (const row of rawRows) {
+      const cells = row.c ?? []
+      const label = String(cells[0]?.v ?? '').trim()
       if (!label) continue
-      const values = cells.slice(1, 1 + months.length).map(num)
+      const values = cells.slice(1).map((c) => num(c?.v))
       rows.push({ label, values })
       byLabel[label] = values
     }

@@ -18,10 +18,9 @@ export default async function DashboardPage() {
   const year = now.getFullYear()
   const updatedAt = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
 
-  // Current month totals from Dashboard data (sum all rows for current period)
+  // Filter Dashboard rows to current month only (dates are ISO "YYYY-MM-DD" after parsing)
   const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  const currentMonthData = dashboardData.filter(r => r.date.startsWith(currentMonthStr))
-  const monthRows = currentMonthData.length > 0 ? currentMonthData : dashboardData
+  const monthRows = dashboardData.filter(r => r.date.startsWith(currentMonthStr))
 
   const totals = monthRows.reduce(
     (acc, r) => ({

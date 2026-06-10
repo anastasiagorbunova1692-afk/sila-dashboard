@@ -43,6 +43,19 @@ function num(v: any): number {
   return isNaN(n) ? 0 : n
 }
 
+// gviz date cells arrive as "Date(2026,5,1)" — month is 0-indexed
+function parseGvizDate(v: any): string {
+  if (!v) return ''
+  const m = String(v).match(/Date\((\d+),(\d+),(\d+)\)/)
+  if (m) {
+    const year = m[1]
+    const month = String(Number(m[2]) + 1).padStart(2, '0')
+    const day = m[3].padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  return String(v)
+}
+
 export async function getDashboardData(): Promise<DashboardRow[]> {
   const rows = await fetchSheet('Dashboard')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -50,7 +63,7 @@ export async function getDashboardData(): Promise<DashboardRow[]> {
     .filter((r: any) => r?.c?.[0]?.v)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .map((r: any) => ({
-      date: String(r.c[0]?.v ?? ''),
+      date: parseGvizDate(r.c[0]?.v),
       totalRevenue: num(r.c[1]?.v),
       raceRevenue: num(r.c[2]?.v),
       certRevenue: num(r.c[3]?.v),

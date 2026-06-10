@@ -43,7 +43,7 @@ function parseCSV(text: string): string[][] {
 
 export async function getAnalyticsData(): Promise<AnalyticsData> {
   const url =
-    'https://docs.google.com/spreadsheets/d/1k_7QA2zi2o-YZ3EjNO8bm28uM2BPIBi8-8iM1X3IK2g/export?format=csv&sheet=%D0%9E%D1%86%D0%B8%D1%84%D1%80%D0%BE%D0%B2%D0%BA%D0%B0'
+    'https://docs.google.com/spreadsheets/d/e/2PACX-1vSZDsLoL7jDuhMqXuwlyleAL_ueRRT7XdUV9BSpgG3ubxlBW1g4IMiWROBAn9rNMu9iwzrWftlh7Ypv/pub?output=csv&gid=1815316927'
   try {
     const res = await fetch(url, { next: { revalidate: 300 } })
     if (!res.ok) return { months: [], rows: [], byLabel: {} }

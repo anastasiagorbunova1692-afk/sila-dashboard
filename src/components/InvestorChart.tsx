@@ -1,7 +1,11 @@
 'use client'
 
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { MTDRow } from '@/lib/sheets'
+
+interface ChartRow {
+  month: string
+  totalRevenue: number
+}
 
 function formatShort(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'М'
@@ -9,7 +13,7 @@ function formatShort(n: number): string {
   return String(n)
 }
 
-export function InvestorChart({ data }: { data: MTDRow[] }) {
+export function InvestorChart({ data }: { data: ChartRow[] }) {
   return (
     <div className="rounded-2xl p-5 h-72" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
       <ResponsiveContainer width="100%" height="100%">

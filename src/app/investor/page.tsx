@@ -1,22 +1,21 @@
-import { getDashboardData, getMTDData } from '@/lib/sheets'
+import { getDashboardData } from '@/lib/sheets'
 import { formatRubles } from '@/lib/utils'
 import { LogoutButton } from '@/components/LogoutButton'
 import { AutoRefresh } from '@/components/AutoRefresh'
 import { InvestorChart } from '@/components/InvestorChart'
+import { groupByMonth } from '@/components/MonthsTable'
 
-const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+const MONTHS_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
 
 export default async function InvestorPage() {
-  const [dashboardData, mtdData] = await Promise.all([getDashboardData(), getMTDData()])
+  const allData = await getDashboardData()
 
   const now = new Date()
   const monthName = MONTHS_RU[now.getMonth()]
   const year = now.getFullYear()
-
   const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  const currentMonthData = dashboardData.filter(r => r.date.startsWith(currentMonthStr))
-  const monthRows = currentMonthData.length > 0 ? currentMonthData : dashboardData
 
+  const monthRows = allData.filter(r => r.date.startsWith(currentMonthStr))
   const totals = monthRows.reduce(
     (acc, r) => ({
       totalRevenue: acc.totalRevenue + r.totalRevenue,
@@ -26,11 +25,16 @@ export default async function InvestorPage() {
     { totalRevenue: 0, clients: 0, newClients: 0 }
   )
 
-  const currentMTD = mtdData[mtdData.length - 1]
-  const prevMTD = mtdData[mtdData.length - 2]
-  const revGrowth = prevMTD && prevMTD.totalRevenue > 0
-    ? (((currentMTD?.totalRevenue ?? 0) - prevMTD.totalRevenue) / prevMTD.totalRevenue * 100).toFixed(1)
+  // Growth vs previous month (from grouped data)
+  const groups = groupByMonth(allData)
+  const curIdx = groups.findIndex(g => g.key === currentMonthStr)
+  const prevGroup = curIdx > 0 ? groups[curIdx - 1] : null
+  const revGrowth = prevGroup && prevGroup.totalRevenue > 0
+    ? (((totals.totalRevenue - prevGroup.totalRevenue) / prevGroup.totalRevenue) * 100).toFixed(1)
     : null
+
+  // Chart data: month groups as MTD-like shape
+  const chartData = groups.map(g => ({ month: g.label, totalRevenue: g.totalRevenue }))
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
@@ -55,7 +59,6 @@ export default async function InvestorPage() {
 
       <main className="max-w-4xl mx-auto px-4 md:px-8 py-12 space-y-12">
 
-        {/* Current month highlight */}
         <section className="text-center space-y-2">
           <p className="text-gray-400 text-sm uppercase tracking-widest">{monthName} {year}</p>
           <p className="text-6xl md:text-7xl font-bold text-white">{formatRubles(totals.totalRevenue)}</p>
@@ -66,7 +69,6 @@ export default async function InvestorPage() {
           )}
         </section>
 
-        {/* Two metrics */}
         <section className="grid grid-cols-2 gap-4 max-w-md mx-auto">
           <div className="rounded-2xl p-5 text-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
             <p className="text-3xl font-bold text-white">{totals.clients.toLocaleString('ru-RU')}</p>
@@ -78,11 +80,10 @@ export default async function InvestorPage() {
           </div>
         </section>
 
-        {/* Monthly chart */}
-        {mtdData.length > 0 && (
+        {chartData.length > 0 && (
           <section>
             <h3 className="text-sm text-gray-400 uppercase tracking-wide mb-4 text-center">Динамика выручки по месяцам</h3>
-            <InvestorChart data={mtdData} />
+            <InvestorChart data={chartData} />
           </section>
         )}
       </main>
